@@ -23,6 +23,7 @@ namespace commands {
         void Execute(std::string_view user_name, irc::domain::Role user_role);
 
         void AddContent(std::string&& content);
+        void AddContent(std::string_view content);
 
         void SetMinimumUserRole(irc::domain::Role role);
 

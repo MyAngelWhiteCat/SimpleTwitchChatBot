@@ -18,6 +18,10 @@ namespace commands {
         content_ = std::move(content);
     }
 
+    void Command::AddContent(std::string_view content) {
+        content_ = std::string(content);
+    }
+
     void Command::SetMinimumUserRole(irc::domain::Role role) {
         minimum_user_role_ = role;
     }
