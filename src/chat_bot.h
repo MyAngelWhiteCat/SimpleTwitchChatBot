@@ -36,15 +36,17 @@ namespace chat_bot {
         void SetCommandStart(char ch);
         char GetCommandStart() const;
         void AddCommand(std::string_view command_name, commands::Command&& command);
-        void AddMode(Mode&& mode);
+        void AddMode(std::string_view mode_name, Mode&& mode);
 
+        commands::Command* GetCommand(std::string_view command_name);
+        Mode* GetMode(std::string_view mode_name);
     private:
         net::io_context& ioc_;
         char command_start_ = '!';
         std::unordered_map<std::string, commands::Command> name_to_command_;
-        std::vector<Mode> modes_;
+        std::unordered_map<std::string, Mode> name_to_mode_;
 
-        void UseMode(irc::domain::Message&& msg);
+        void UseModes(irc::domain::Message&& msg);
         void ProcessCommand(irc::domain::Message&& msg);
     };
 

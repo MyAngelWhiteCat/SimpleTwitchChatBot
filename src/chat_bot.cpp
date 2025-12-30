@@ -17,8 +17,22 @@ namespace chat_bot {
         name_to_command_[std::string(command_name)] = std::move(command);
     }
 
-    void ChatBot::AddMode(Mode&& mode) {
-        modes_.push_back(std::move(mode));
+    void ChatBot::AddMode(std::string_view mode_name, Mode&& mode) {
+        name_to_mode_[std::string(mode_name)] = std::move(mode);
+    }
+
+    commands::Command* ChatBot::GetCommand(std::string_view command_name) {
+        if (auto it = name_to_command_.find(std::string(command_name));
+            it != name_to_command_.end()) {
+            return &it->second;
+        }
+    }
+
+    Mode* ChatBot::GetMode(std::string_view mode_name) {
+        if (auto it = name_to_command_.find(std::string(mode_name));
+            it != name_to_command_.end()) {
+            return &it->second;
+        }
     }
 
     // case 1 - user:!command 
@@ -30,14 +44,14 @@ namespace chat_bot {
         }
 
         net::post(ioc_, [self = shared_from_this(), message]() mutable {
-            self->UseMode(std::move(message)); });
+            self->UseModes(std::move(message)); });
         net::post(ioc_, [self = shared_from_this(), message = std::move(message)]() mutable {
             self->ProcessCommand(std::move(message)); });
     }
 
-    void ChatBot::UseMode(irc::domain::Message&& msg) {
+    void ChatBot::UseModes(irc::domain::Message&& msg) {
         try {
-            for (auto& mode : modes_) {
+            for (auto& [_, mode] : name_to_mode_) {
                 mode.AddContent(msg.GetContent());
                 mode.Execute(msg.GetNick(), msg.GetRole());
             }
