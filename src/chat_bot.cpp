@@ -17,6 +17,10 @@ namespace chat_bot {
         name_to_command_[std::string(command_name)] = std::move(command);
     }
 
+    void ChatBot::AddMode(Mode&& mode) {
+        modes_.push_back(std::move(mode));
+    }
+
     // case 1 - user:!command 
     // case 2 - user:!command some text for command execution
     void ChatBot::ParseAndExecute(irc::domain::Message&& message) {
@@ -25,32 +29,49 @@ namespace chat_bot {
             return;
         }
 
-        std::string command;
-        std::string content;
+        net::post(ioc_, [self = shared_from_this(), message]() mutable {
+            self->UseMode(std::move(message)); });
+        net::post(ioc_, [self = shared_from_this(), message = std::move(message)]() mutable {
+            self->ProcessCommand(std::move(message)); });
+    }
 
-        if (line[0] == command_start_) {
-            size_t command_end = line.find_first_of(' '); 
-            if (command_end == std::string::npos) {
-                command = std::string(line.substr(1));
+    void ChatBot::UseMode(irc::domain::Message&& msg) {
+        try {
+            for (auto& mode : modes_) {
+                mode.AddContent(msg.GetContent());
+                mode.Execute(msg.GetNick(), msg.GetRole());
             }
-            else {
-                command = std::string(line.substr(1, command_end - 1)); 
-                content = std::string(line.substr(command_end + 1));
+        }
+        catch (const std::exception& e) {
+            LOG_CRITICAL(e.what());
+        }
+    }
+
+    void ChatBot::ProcessCommand(irc::domain::Message&& msg) {
+        try {
+            auto line = msg.GetContent();
+            if (line[0] == command_start_) {
+                std::string command;
+                std::string content;
+                size_t command_end = line.find_first_of(' ');
+                if (command_end == std::string::npos) {
+                    command = std::string(line.substr(1));
+                }
+                else {
+                    command = std::string(line.substr(1, command_end - 1));
+                    content = std::string(line.substr(command_end + 1));
+                }
+                if (auto it = name_to_command_.find(command); it != name_to_command_.end()) {
+                    it->second.AddContent(std::move(content));
+                    it->second.Execute(msg.GetNick(), msg.GetRole());
+                }
+                else {
+                    LOG_ERROR("Unknown command");
+                }
             }
         }
-        else {
-            LOG_INFO("Not a command");
-            LOG_INFO(std::string(line));
-            return;
+        catch (const std::exception& e) {
+            LOG_CRITICAL(e.what());
         }
-
-        if (auto it = name_to_command_.find(command); it != name_to_command_.end()) {
-            it->second.AddContent(std::move(content));
-            it->second.Execute(message.GetNick(), message.GetRole());
-        }
-        else {
-            LOG_ERROR("Unknown command");
-        }
-
     }
 }
