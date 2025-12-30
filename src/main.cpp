@@ -27,13 +27,17 @@ int main() {
     net::io_context ioc(thread_pool);
     auto wg = net::make_work_guard(ioc);
 
-    auto chat_bot = std::make_shared<chat_bot::ChatBot>();
+    auto chat_bot = std::make_shared<chat_bot::ChatBot>(ioc);
 
     auto test_executor = std::make_unique<commands::TestOutputCommandExecutor>();
+    auto test_executor2 = std::make_unique<commands::TestOutputCommandExecutor>();
     commands::Command command(std::move(test_executor));
-    chat_bot->AddCommand("test", std::move(command));
+    commands::Command mode(std::move(test_executor2));
 
-    auto client = std::make_shared<irc::Client<chat_bot::ChatBot>>(ioc, chat_bot);
+    chat_bot->AddCommand("test", std::move(command));
+    chat_bot->AddMode(std::move(mode));
+
+    auto client = std::make_shared<irc::Client>(ioc, chat_bot);
 
     irc::domain::AuthorizeData auth_data;
     client->Connect();
