@@ -102,16 +102,21 @@ add_library(ChatBot STATIC
 target_link_libraries(ChatBot PUBLIC
     Connection
     Logger
+    Boost::system
+    Boost::thread
+    ZLIB::ZLIB
 )
 
 ########################################## irc client
 
 add_library(IRCClient STATIC
     src/irc_client.h
+    src/irc_client.cpp
 
     src/message.h
     src/message.cpp
     src/message_handler.h
+    src/message_handler.cpp
     src/message_processor.h 
     src/message_processor.cpp
 
