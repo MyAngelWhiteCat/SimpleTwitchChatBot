@@ -2,17 +2,17 @@
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/strand.hpp>
+
 #include <string>
 #include <string_view>
-
 #include <iostream>
 #include <memory>
 #include <vector>
+#include <sstream>
 
 #include "chat_bot.h"
 #include "connection.h"
 #include "message.h"
-
 
 namespace irc {
 
@@ -25,8 +25,7 @@ namespace irc {
         using Strand = net::strand<net::io_context::executor_type>;
         using MessageType = irc::domain::MessageType;
 
-        template <typename ChatBot>
-        class MessageHandler : public std::enable_shared_from_this<MessageHandler<ChatBot>> {
+        class MessageHandler : public std::enable_shared_from_this<MessageHandler> {
 
         public:
             MessageHandler(std::shared_ptr<connection::Connection> connection, Strand& connection_strand)
@@ -39,18 +38,17 @@ namespace irc {
             void operator()(std::vector<domain::Message>&& messages);
 
             void UpdateConnection(std::shared_ptr<connection::Connection> new_connection);
-            void SetChatBot(std::shared_ptr<ChatBot> chat_bot);
+            void SetChatBot(std::shared_ptr<chat_bot::ChatBot> chat_bot);
 
         private:
             Strand& connection_strand_;
             std::shared_ptr<connection::Connection> connection_;
-            std::shared_ptr<ChatBot> chat_bot_{ nullptr };
+            std::shared_ptr<chat_bot::ChatBot> chat_bot_{ nullptr };
 
             void SendPong(const std::string_view ball);
         };
 
-        template <typename ChatBot>
-        void MessageHandler<ChatBot>::operator()(std::vector<domain::Message>&& messages) {
+        void MessageHandler::operator()(std::vector<domain::Message>&& messages) {
             try {
                 std::stringstream ss{};
                 for (auto& message : messages) {
@@ -79,20 +77,17 @@ namespace irc {
             }
         }
 
-        template <typename ChatBot>
-        void MessageHandler<ChatBot>::UpdateConnection(std::shared_ptr<connection::Connection> new_connection) {
+        void MessageHandler::UpdateConnection(std::shared_ptr<connection::Connection> new_connection) {
             net::dispatch(connection_strand_, [self = this->shared_from_this(), new_connection]() {
                 self->connection_ = new_connection;
                 });
         }
 
-        template <typename ChatBot>
-        void MessageHandler<ChatBot>::SetChatBot(std::shared_ptr<ChatBot> chat_bot) {
+        void MessageHandler::SetChatBot(std::shared_ptr<chat_bot::ChatBot> chat_bot) {
             chat_bot_ = chat_bot;
         }
 
-        template <typename ChatBot>
-        void MessageHandler<ChatBot>::SendPong(const std::string_view ball) {
+        void MessageHandler::SendPong(const std::string_view ball) {
             net::dispatch(connection_strand_, [self = this->shared_from_this(), ball = std::string(ball)]() {
                 self->connection_->AsyncWrite(std::string(domain::Command::PONG).append(ball).append("\r\n"));
                 });
